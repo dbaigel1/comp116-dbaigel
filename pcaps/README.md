@@ -16,7 +16,7 @@ set1.pcap
 
 4. Secure File Transfer Protocol, or SSH File Transfer Protocol (SFTP)
 
-5. Source IP Address : 23.62.236.80
+5. Server IP Address : 192.168.1.8
 
 6. Username : defcon
    Password : m1ngisablowhard
