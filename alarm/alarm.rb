@@ -1,0 +1,150 @@
+#The Incident Alarm#
+#Created by Daniel Baigel#
+
+require 'packetfu'
+
+def null?(pkt)
+	return (pkt.tcp_flags.urg == 0 && 
+	       (pkt.tcp_flags.fin == 0) && 
+	       (pkt.tcp_flags.psh == 0) && 
+	       (pkt.tcp_flags.ack == 0) && 
+	       (pkt.tcp_flags.rst == 0) && 
+	       (pkt.tcp_flags.syn == 0) ) 
+
+end
+
+def fin?(pkt)
+	return ( (pkt.tcp_flags.urg == 0) && 
+		 (pkt.tcp_flags.fin == 1) && 
+		 (pkt.tcp_flags.psh == 0) && 
+		 (pkt.tcp_flags.ack == 0) && 
+		 (pkt.tcp_flags.rst == 0) && 
+		 (pkt.tcp_flags.syn == 0) ) 
+
+end
+
+def xmas?(pkt)
+	return ( (pkt.tcp_flags.urg == 1) && 
+		 (pkt.tcp_flags.fin == 1) && 
+		 (pkt.tcp_flags.psh == 1) ) 
+
+end
+
+def credit_card?(pkt)
+	
+	if pkt.payload.match /4\d{3}(\s|-)?\d{4}(\s|-)?\d{4}(\s|-)?\d{4}/
+      		return true
+	end
+
+	if pkt.payload.match /5\d{3}(\s|-)?\d{4}(\s|-)?\d{4}(\s|-)?\d{4}/
+		return true
+	end
+      
+ 	if pkt.payload.match /6011(\s|-)?\d{4}(\s|-)?\d{4}(\s|-)?\d{4}/
+		return true
+	end
+
+	if pkt.payload.match (/3\d{3}(\s|-)?\d{6}(\s|-)?\d{5}/)
+		return true
+	end
+
+end
+
+
+def print_alarm(pkt, attack, incident_num)
+	puts "#{incident_num}. ALERT: #{attack} is detected from #{pkt.ip_saddr} (#{pkt.proto.last}) (#{pkt.payload}) !"
+end
+
+def analyze_live_stream()
+
+stream = PacketFu::Capture.new(:start => true, :iface => 'eth0', :promisc => true)
+
+	incident_num = 0
+
+	stream.stream.each do |p|	
+	
+		pkt = ::PacketFu::Packet.parse(p)
+		if (pkt.is_tcp?)
+	
+		#NULL SCAN	
+		if (null?(pkt))	
+			print_alarm(pkt, 'Null Scan', incident_num += 1)
+		end
+		
+		#FIN SCAN
+		if (fin?(pkt))
+			print_alarm(pkt, 'Fin Scan', incident_num += 1)
+		end
+
+		#XMAS SCAN
+		if (xmas?(pkt))
+			print_alarm(pkt, 'Xmas Scan', incident_num += 1)
+		end
+	
+		#NMAP SCAN 
+		if (pkt.payload.scan(/\x4E\x6D\x61\x70/) )
+			print_alarm(pkt, "Nmap Scan", incident_num += 1)
+		end
+	
+		#CREDIT CARDS
+		if (credit_card?(pkt))
+			incident_num += 1
+			puts "#{incident_num}. ALERT: #{Credit Card} leaked in the clear from #{pkt.ip_saddr} (#{pkt.proto.last})!"
+		end
+
+		#Nikto SCAN 
+		if (pkt.payload.scan(/\x4E\x69\x6B\x74\x6F/) )
+			print_alarm(pkt, "Nikto Scan", incident_num += 1)
+		end
+	
+		end
+	end
+
+end
+
+def analyze_web_server (packets)
+	incident_num = 0
+	File.readlines(packets).collect do |log|
+        	#loop for all packets
+		
+		#Rob Graham's Masscan
+		if (log.match(/masscan/))
+			incident_num += 1
+	
+			puts "#{incident_num}. ALERT: MASSCAN is detected from #{log.match(/[0-9.]{7,16}/)} (HTTP) (#{log.match(/".*"/)})!"
+		end
+
+		#phpMyadmin stuff
+		if (log.match(/phpMyAdmin/))
+			incident_num += 1
+			puts "#{incident_num}. ALERT: PHPMyAdmin is detected from #{log.match(/[0-9.]{7,16}/)} (HTTP) (#{log.match(/".*"/)})!"
+		end
+		
+		#NMAP SCAN
+		if (log.match(/NMAP/i) != nil)
+			incident_num += 1
+			puts "#{incident_num}. ALERT: Nmap Scan is detected from #{log.match(/[0-9.]{7,16}/)} (HTTP) (#{log.match(/".*"/)})!"
+		end
+
+
+		#Shell Shock
+		if (log.match(/() { :; };/))
+			incident_num += 1
+			puts "#{incident_num}. ALERT: Shell Shock is detected from #{log.match(/[0-9.]{7,16}/)} (HTTP) (#{log.match(/".*"/)})!"
+		end
+
+		#Shell Code
+		if (log.match(/\\x/))
+			incident_num += 1
+			puts "#{incident_num}. ALERT: Shell Code is detected from #{log.match(/[0-9.]{7,16}/)} (HTTP) (#{log.match(/".*"/)})!"
+		end
+	end
+end
+
+if (ARGV[0] == "-r")
+	analyze_web_server(ARGV[1])
+else
+	analyze_live_stream()
+end
+
+
