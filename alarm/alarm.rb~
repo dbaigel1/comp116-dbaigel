@@ -82,12 +82,12 @@ stream = PacketFu::Capture.new(:start => true, :iface => 'eth0', :promisc => tru
 		end
 	
 		#NMAP SCAN 
-		if (pkt.payload.match(/\x4E\x6D\x61\x70/) )
+		if (pkt.payload.scan(/\x4E\x6D\x61\x70/) )
 			print_alarm(pkt, "Nmap Scan", incident_num += 1)
 		end
 
 		#Nikto SCAN 
-		if (pkt.payload.match(/\x4E\x69\x6B\x74\x6F/) )
+		elsif (pkt.payload.scan(/\x4E\x69\x6B\x74\x6F/) )
 			print_alarm(pkt, "Nikto Scan", incident_num += 1)
 		end
 				
@@ -95,14 +95,14 @@ stream = PacketFu::Capture.new(:start => true, :iface => 'eth0', :promisc => tru
 		#CREDIT CARDS
 		if (credit_card?(pkt))
 			incident_num += 1
-			puts "#{incident_num}. ALERT: Credit Card leaked in the clear from #{pkt.ip_saddr} (#{pkt.proto.last})!"
+			puts "#{incident_num}. ALERT: #{Credit Card} leaked in the clear from #{pkt.ip_saddr} (#{pkt.proto.last})!"
 		end
 
 		
 		end
 	end
 
-end
+#end
 
 def analyze_web_server (packets)
 	incident_num = 0
@@ -148,4 +148,5 @@ if (ARGV[0] == "-r")
 else
 	analyze_live_stream()
 end
+
 
